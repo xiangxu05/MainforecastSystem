@@ -1,6 +1,5 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-
 #include <QMainWindow>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -22,7 +21,6 @@
 #include <QRegularExpressionMatchIterator>
 #include "qcustomplot.h"
 #include "form.h"
-
 #define BASEURL "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/table_infer/tensilV1"
 
 QT_BEGIN_NAMESPACE
@@ -36,26 +34,22 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-
+    //两个创建主窗口的方法
     MainWindow(QWidget *parent = nullptr);
-
     ~MainWindow();
 
+    //初始化设置方法
     void setupsystem();
-
     void setupHeatmap(QCustomPlot *customPlot);
 
-    QVector<double> labelPositions(const QVector<QString> &labels, double offset = 0);
+    QVector<double> labelPositions(const QVector<QString> &labels, double offset = 0);//暂时不知道干嘛用的
 
+    //对热力图进行输出
     void dynamicHeatmap(int x , int y , double z);
-
-
-public slots:
-
-    void handleCustomSignal();
 
 private slots:
 
+    //浏览按钮
     void on_BrowseButton_clicked();
 
     void on_SingleButton_clicked();
@@ -95,20 +89,18 @@ private slots:
     void onMouseMove(QMouseEvent* event);
 
 private:
-
+    //主界面
     Ui::MainWindow *ui;
 
+    //AccessToken相关对象
     QMetaObject::Connection getAccessToken;
-
     QNetworkAccessManager *get_accessToken;
-
     QString accessToken;
 
+    //预测结果相关对象
     QMetaObject::Connection getForcastResult;
-
     QNetworkAccessManager *get_forcastResult;
-
-    QString focastresult;//预测结果
+    QString focastresult;
 
     int num=1;
 
@@ -128,6 +120,7 @@ private:
 
     int waitTime=2000;
 
+    //表格对象
     Form *myWidget;
 
 };

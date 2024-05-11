@@ -8,6 +8,66 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setupsystem();
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::setupsystem(){
+    this->setWindowTitle("超声检测管道性能预测系统");
+    ui->statuLable->setText("系统初始化中");
+    this->on_getAccessToken();
+    ui->textBrowser->setTextInteractionFlags(Qt::NoTextInteraction);
+
+    //表格序列对象创建
+    series = new QLineSeries();
+    series->setName("拉力预测值/N");
+    // series->append(0,0);
+
+    //表格处理
+    QChart* chart = ui->chartView->chart();     // 获取QchartView内置的chart
+    chart->addSeries(series);                   // 将创建好的折线图series添加进chart中
+    // 创建 X 轴和 Y 轴
+    QValueAxis *axisX = new QValueAxis;
+    QValueAxis *axisY = new QValueAxis;
+    // 将坐标轴添加到图表中
+    chart->addAxis(axisX, Qt::AlignBottom);
+    chart->addAxis(axisY, Qt::AlignLeft);
+    // 将折线图关联到坐标轴
+    series->attachAxis(axisX);
+    series->attachAxis(axisY);
+    // 动态调整 X 轴范围
+    axisX->setRange(1, 2);
+    // 动态调整 Y 轴范围，假设 Y 轴的数据范围在 [0, 10]
+    axisY->setRange(0, 100);
+    chart->setTitle("超声数据预测");            // 设置标题
+    ui->chartView->setRenderHint(QPainter::Antialiasing);  // 设置抗锯齿
+
+    //网络状态检测
+    NetworkDetect* networkDetector = new NetworkDetect();
+    QObject::connect(networkDetector, &NetworkDetect::sig_netStatusChanged, [=](bool state) {
+        qDebug() << "Network Status Changed: " << (state ? "Online" : "Offline");
+
+        if (!state && !networkDetector->isDialogVisible()) {
+            // 在主线程中弹出提示框
+            QMetaObject::invokeMethod(QCoreApplication::instance(), [=]() {
+                    networkDetector->setDialogVisible(true);  // 设置对话框显示状态
+                    QMessageBox::information(nullptr, "提示", "网络已掉线，请检查网络连接。", QMessageBox::Ok);
+
+                    // 用户关闭提示框后执行一些操作，可以在这里添加你的代码
+                    qDebug() << "User closed the message box. Performing additional operations...";
+                    this->on_getAccessToken();
+                    networkDetector->setDialogVisible(false);  // 重置对话框显示状态
+                }, Qt::QueuedConnection);
+        }
+    });
+    networkDetector->start();
+
+    customPlot=ui->widget;//指针方便使用widget
+
+    setupHeatmap(customPlot);
 
     connect(ui->action_S,&QAction::triggered,this,&MainWindow::singleHelp);
     connect(ui->action_M,&QAction::triggered,this,&MainWindow::multiHelp);
@@ -20,15 +80,80 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->Output_line,&QAction::triggered,this,&MainWindow::outputLine);
     connect(ui->Output_hetmap,&QAction::triggered,this,&MainWindow::outputHeatMap);
     connect(ui->Output_data,&QAction::triggered,this,&MainWindow::outputData);
-    // connect(myWidget,SIGNAL(&Form::customSignal()),this,SLOT(handleCustomSignal()));
-
     connect(ui->widget, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
-
 }
 
-MainWindow::~MainWindow()
+void MainWindow::setupHeatmap(QCustomPlot *customPlot)
 {
-    delete ui;
+    QVector<QString> Xaxis = {"1", "2", "3", "4", "5", "6", "7",
+                              "9", "10", "11","12","13",
+                              "14", "15", "16", "17", "18", "19",
+                              "20"};//横坐标lable
+    QVector<QString> Yaxis = {"1", "2", "3",
+                              "4", "5"};//纵坐标lable
+
+    QVector<QVector<double>> data = {{0,0,0},{0,1,0},{0,2,0},{0,3,0},{0,4,0},{0,5,0},{0,6,0},{0,7,0},{0,8,0},{0,9,0},{0,10,0},{0,11,0},{0,12,0},{0,13,0},{0,14,0},{0,15,0},{0,16,0},{0,17,0},{0,18,0},
+        {0,19,0},{0,20,0},{1,0,0},{1,1,0},{1,2,0},{1,3,0},{1,4,0},{1,5,0},{1,6,0},{1,7,0},{1,8,0},{1,9,0},{1,10,0},{1,11,0},{1,12,0},{1,13,0},{1,14,0},{1,15,0},
+        {1,16,0},{1,17,0},{1,18,0},{1,19,0},{2,0,0},{2,1,0},{2,2,0},{2,3,0},{2,4,0},{2,5,0},{2,6,0},{2,7,0},{2,8,0},{2,9,0},{2,10,0},{2,11,0},{2,12,0},
+        {2,13,0},{2,14,0},{2,15,0},{2,16,0},{2,17,0},{2,18,0},{2,19,0},{3,0,0},{3,1,0},{3,2,0},{3,3,0},{3,4,0},{3,5,0},{3,6,0},{3,7,0},{3,8,0},
+        {3,9,0},{3,10,0},{3,11,0},{3,12,0},{3,13,0},{3,14,0},{3,15,0},{3,16,0},{3,17,0},{3,18,0},{3,19,0},{4,0,0},{4,1,0},{4,2,0},{4,3,0},{4,4,0},
+        {4,5,0},{4,6,0},{4,7,0},{4,8,0},{4,9,0},{4,10,0},{4,11,0},{4,12,0},{4,13,0},{4,14,0},{4,15,0},{4,16,0},{4,17,0},{4,18,0},{4,19,0}
+    };
+
+    QCPColorMap *heatmap = new QCPColorMap(customPlot->xAxis, customPlot->yAxis);  // 构造一个颜色图
+    heatmap->data()->setSize(Xaxis.size(), Yaxis.size());   // 设置颜色图数据维度，其内部维护着一个一维数组（一般表现为二维数组），这里可以理解为有多少个小方块
+    heatmap->data()->setRange(QCPRange(0.5, Xaxis.size() - 0.5), QCPRange(0.5, Yaxis.size() - 0.5));  // 颜色图在x、y轴上的范围
+
+    // 设置轴的显示，这里使用文字轴
+    QSharedPointer<QCPAxisTickerText> xTicker(new QCPAxisTickerText);
+    QSharedPointer<QCPAxisTickerText> yTicker(new QCPAxisTickerText);//刻度文本
+    xTicker->setTicks(labelPositions(Xaxis, 0.5), Xaxis);
+    yTicker->setTicks(labelPositions(Yaxis, 0.5), Yaxis);//刻度位置设置
+    xTicker->setSubTickCount(1);
+    yTicker->setSubTickCount(1);//子刻度数目
+    customPlot->xAxis->setTicker(xTicker);
+    customPlot->yAxis->setTicker(yTicker);
+    customPlot->xAxis->grid()->setPen(Qt::NoPen);
+    customPlot->yAxis->grid()->setPen(Qt::NoPen);//不显示网格线
+    customPlot->xAxis->grid()->setSubGridVisible(true);
+    customPlot->yAxis->grid()->setSubGridVisible(true);//显示子网络
+    customPlot->xAxis->setSubTicks(true);
+    customPlot->yAxis->setSubTicks(true);//子刻度显示
+    customPlot->xAxis->setTickLength(0);
+    customPlot->yAxis->setTickLength(0);//刻度线长度为0
+    customPlot->xAxis->setSubTickLength(6);
+    customPlot->yAxis->setSubTickLength(6);//子刻度线长度为6
+    customPlot->xAxis->setRange(0, Xaxis.size());
+    customPlot->yAxis->setRange(0, Yaxis.size());//XY轴范围设定
+
+    //设置Z值来显示颜色
+    for (int x = 0; x < Xaxis.size(); ++x) {
+        for (int y = 0; y < Yaxis.size(); ++y) {
+            int z = data.at(Xaxis.size() * y + x).at(2);
+            if (z) heatmap->data()->setCell(x, y, z);     // 如果z不为0，则设置颜色值的位置
+            else heatmap->data()->setAlpha(x, y, 0);  // z为0，设置为透明
+        }
+    }
+
+    QCPColorScale *colorScale = new QCPColorScale(customPlot);  // 构造一个色条
+    colorScale->setType(QCPAxis::atBottom);   // 水平显示
+    customPlot->plotLayout()->addElement(1, 0, colorScale); // 在颜色图下面显示，色条被放置在布局的第一行第一列
+    heatmap->setColorScale(colorScale);
+    QCPColorGradient gradient;  // 色条使用的颜色渐变
+    gradient.setColorStopAt(0.0, QColor("#0000ff"));   // 设置色条开始时的颜色f6efa6
+    gradient.setColorStopAt(0.25, QColor("#87CEEB"));
+    gradient.setColorStopAt(0.375, QColor("#87cefa"));
+    gradient.setColorStopAt(0.5, QColor("#ffff00"));
+    gradient.setColorStopAt(1.0, QColor("#ff0000"));  // 设置色条结束时的颜色bf444c
+    heatmap->setGradient(gradient);
+    // heatmap->rescaleDataRange();        // 自动计算数据范围，数据范围决定了哪些数据值映射到QCPColorGradient的颜色渐变当中
+    heatmap->setDataRange(QCPRange(0, 200));     // 手动设置数据范围
+    heatmap->setInterpolate(false);         // 设置是否使用插值
+
+    // 保持色条与轴矩形边距一致
+    QCPMarginGroup *marginGroup = new QCPMarginGroup(customPlot);
+    customPlot->axisRect()->setMarginGroup(QCP::msLeft | QCP::msRight, marginGroup);
+    colorScale->setMarginGroup(QCP::msLeft | QCP::msRight, marginGroup);
 }
 
 void MainWindow::on_BrowseButton_clicked()
@@ -44,7 +169,6 @@ void MainWindow::on_BrowseButton_clicked()
     {
         ui->FilelineEdit->setText(fileName);
     }
-
 }
 
 void MainWindow::on_getAccessToken(){
@@ -185,16 +309,16 @@ void MainWindow::multiforcastResult(QNetworkReply* pReply){
 void MainWindow::on_SingleButton_clicked()
 {
     ui->SingleButton->setDisabled(true);
-    QString Fire = ui->FirelineEdit->text();
-    QString Draw = ui->DrawlineEdit->text();
-    QString Height= ui->HeightlineEdit->text();
-    QString dB= ui->dBlineEdit->text();
+    QString Fire = ui->waveHightEdit->text();
+    QString Draw = ui->dBEdit->text();
+    QString Height= ui->xStepEdit->text();
+    QString dB= ui->yStepEdit->text();
     QString filePath = ui->FilelineEdit->text();
 
-    ui->FirelineEdit->clear();
-    ui->DrawlineEdit->clear();
-    ui->HeightlineEdit->clear();
-    ui->dBlineEdit->clear();
+    ui->waveHightEdit->clear();
+    ui->dBEdit->clear();
+    ui->xStepEdit->clear();
+    ui->yStepEdit->clear();
     ui->FilelineEdit->clear();
 
     if((Fire.isEmpty() && Draw.isEmpty() && Height.isEmpty() && dB.isEmpty() && !filePath.isEmpty()) ||
@@ -433,79 +557,7 @@ void MainWindow::on_SingleButton_clicked()
     ui->SingleButton->setEnabled(true);
 }
 
-void MainWindow::setupHeatmap(QCustomPlot *customPlot)
-{
-    QVector<QString> Xaxis = {"1", "2", "3", "4", "5", "6", "7",
-                              "9", "10", "11","12","13",
-                              "14", "15", "16", "17", "18", "19",
-                              "20"};//横坐标lable
-    QVector<QString> Yaxis = {"1", "2", "3",
-                              "4", "5"};//纵坐标lable
 
-    QVector<QVector<double>> data = {{0,0,0},{0,1,0},{0,2,0},{0,3,0},{0,4,0},{0,5,0},{0,6,0},{0,7,0},{0,8,0},{0,9,0},{0,10,0},{0,11,0},{0,12,0},{0,13,0},{0,14,0},{0,15,0},{0,16,0},{0,17,0},{0,18,0},
-                                     {0,19,0},{0,20,0},{1,0,0},{1,1,0},{1,2,0},{1,3,0},{1,4,0},{1,5,0},{1,6,0},{1,7,0},{1,8,0},{1,9,0},{1,10,0},{1,11,0},{1,12,0},{1,13,0},{1,14,0},{1,15,0},
-                                     {1,16,0},{1,17,0},{1,18,0},{1,19,0},{2,0,0},{2,1,0},{2,2,0},{2,3,0},{2,4,0},{2,5,0},{2,6,0},{2,7,0},{2,8,0},{2,9,0},{2,10,0},{2,11,0},{2,12,0},
-                                     {2,13,0},{2,14,0},{2,15,0},{2,16,0},{2,17,0},{2,18,0},{2,19,0},{3,0,0},{3,1,0},{3,2,0},{3,3,0},{3,4,0},{3,5,0},{3,6,0},{3,7,0},{3,8,0},
-                                     {3,9,0},{3,10,0},{3,11,0},{3,12,0},{3,13,0},{3,14,0},{3,15,0},{3,16,0},{3,17,0},{3,18,0},{3,19,0},{4,0,0},{4,1,0},{4,2,0},{4,3,0},{4,4,0},
-                                     {4,5,0},{4,6,0},{4,7,0},{4,8,0},{4,9,0},{4,10,0},{4,11,0},{4,12,0},{4,13,0},{4,14,0},{4,15,0},{4,16,0},{4,17,0},{4,18,0},{4,19,0}
-                                     };
-
-    QCPColorMap *heatmap = new QCPColorMap(customPlot->xAxis, customPlot->yAxis);  // 构造一个颜色图
-    heatmap->data()->setSize(Xaxis.size(), Yaxis.size());   // 设置颜色图数据维度，其内部维护着一个一维数组（一般表现为二维数组），这里可以理解为有多少个小方块
-    heatmap->data()->setRange(QCPRange(0.5, Xaxis.size() - 0.5), QCPRange(0.5, Yaxis.size() - 0.5));  // 颜色图在x、y轴上的范围
-
-    // 设置轴的显示，这里使用文字轴
-    QSharedPointer<QCPAxisTickerText> xTicker(new QCPAxisTickerText);
-    QSharedPointer<QCPAxisTickerText> yTicker(new QCPAxisTickerText);//刻度文本
-    xTicker->setTicks(labelPositions(Xaxis, 0.5), Xaxis);
-    yTicker->setTicks(labelPositions(Yaxis, 0.5), Yaxis);//刻度位置设置
-    xTicker->setSubTickCount(1);
-    yTicker->setSubTickCount(1);//子刻度数目
-    customPlot->xAxis->setTicker(xTicker);
-    customPlot->yAxis->setTicker(yTicker);
-    customPlot->xAxis->grid()->setPen(Qt::NoPen);
-    customPlot->yAxis->grid()->setPen(Qt::NoPen);//不显示网格线
-    customPlot->xAxis->grid()->setSubGridVisible(true);
-    customPlot->yAxis->grid()->setSubGridVisible(true);//显示子网络
-    customPlot->xAxis->setSubTicks(true);
-    customPlot->yAxis->setSubTicks(true);//子刻度显示
-    customPlot->xAxis->setTickLength(0);
-    customPlot->yAxis->setTickLength(0);//刻度线长度为0
-    customPlot->xAxis->setSubTickLength(6);
-    customPlot->yAxis->setSubTickLength(6);//子刻度线长度为6
-    customPlot->xAxis->setRange(0, Xaxis.size());
-    customPlot->yAxis->setRange(0, Yaxis.size());//XY轴范围设定
-
-    //设置Z值来显示颜色
-    for (int x = 0; x < Xaxis.size(); ++x) {
-        for (int y = 0; y < Yaxis.size(); ++y) {
-            int z = data.at(Xaxis.size() * y + x).at(2);
-            if (z) heatmap->data()->setCell(x, y, z);     // 如果z不为0，则设置颜色值的位置
-            else heatmap->data()->setAlpha(x, y, 0);  // z为0，设置为透明
-        }
-    }
-
-    QCPColorScale *colorScale = new QCPColorScale(customPlot);  // 构造一个色条
-    colorScale->setType(QCPAxis::atBottom);   // 水平显示
-    customPlot->plotLayout()->addElement(1, 0, colorScale); // 在颜色图下面显示，色条被放置在布局的第一行第一列
-    heatmap->setColorScale(colorScale);
-    QCPColorGradient gradient;  // 色条使用的颜色渐变
-    gradient.setColorStopAt(0.0, QColor("#0000ff"));   // 设置色条开始时的颜色f6efa6
-    gradient.setColorStopAt(0.25, QColor("#87CEEB"));
-    gradient.setColorStopAt(0.375, QColor("#87cefa"));
-    gradient.setColorStopAt(0.5, QColor("#ffff00"));
-    gradient.setColorStopAt(1.0, QColor("#ff0000"));  // 设置色条结束时的颜色bf444c
-    heatmap->setGradient(gradient);
-    // heatmap->rescaleDataRange();        // 自动计算数据范围，数据范围决定了哪些数据值映射到QCPColorGradient的颜色渐变当中
-    heatmap->setDataRange(QCPRange(0, 200));     // 手动设置数据范围
-    heatmap->setInterpolate(false);         // 设置是否使用插值
-
-    // 保持色条与轴矩形边距一致
-    QCPMarginGroup *marginGroup = new QCPMarginGroup(customPlot);
-    customPlot->axisRect()->setMarginGroup(QCP::msLeft | QCP::msRight, marginGroup);
-    colorScale->setMarginGroup(QCP::msLeft | QCP::msRight, marginGroup);
-
-}
 
 QVector<double> MainWindow::labelPositions(const QVector<QString> &labels, double offset)
 {
@@ -519,7 +571,7 @@ void MainWindow::dynamicHeatmap(int x , int y , double z)
 {
     auto *colorMap = static_cast<QCPColorMap *>(ui->widget->plottable(0));
     colorMap->data()->setCell(x, y, z);
-    colorMap->data()->setAlpha(x,y,1000);
+    colorMap->data()->setAlpha(x,y,255);
     if(z<100){
         QCPItemLine *line1 = new QCPItemLine(customPlot);
         line1->start->setCoords(x+0.25, y+0.25);
@@ -531,67 +583,11 @@ void MainWindow::dynamicHeatmap(int x , int y , double z)
         line2->end->setCoords(x+0.75, y+0.25);
         line2->setPen(QPen(Qt::red));
     }
-
     ui->widget->replot();
 }
 
 void MainWindow::loopEvent(){
     loop.quit();
-}
-
-void MainWindow::setupsystem(){
-    this->setWindowTitle("超声检测管道性能预测系统");
-    ui->statuLable->setText("系统初始化中");
-    this->on_getAccessToken();
-    ui->textBrowser->setTextInteractionFlags(Qt::NoTextInteraction);
-
-    //表格序列对象创建
-    series = new QLineSeries();
-    series->setName("拉力预测值/N");
-    // series->append(0,0);
-
-    //表格处理
-    QChart* chart = ui->chartView->chart();     // 获取QchartView内置的chart
-    chart->addSeries(series);                   // 将创建好的折线图series添加进chart中
-    // 创建 X 轴和 Y 轴
-    QValueAxis *axisX = new QValueAxis;
-    QValueAxis *axisY = new QValueAxis;
-    // 将坐标轴添加到图表中
-    chart->addAxis(axisX, Qt::AlignBottom);
-    chart->addAxis(axisY, Qt::AlignLeft);
-    // 将折线图关联到坐标轴
-    series->attachAxis(axisX);
-    series->attachAxis(axisY);
-    // 动态调整 X 轴范围
-    axisX->setRange(1, 2);
-    // 动态调整 Y 轴范围，假设 Y 轴的数据范围在 [0, 10]
-    axisY->setRange(0, 100);
-    chart->setTitle("超声数据预测");            // 设置标题
-    ui->chartView->setRenderHint(QPainter::Antialiasing);  // 设置抗锯齿
-
-    //网络状态检测
-    NetworkDetect* networkDetector = new NetworkDetect();
-    QObject::connect(networkDetector, &NetworkDetect::sig_netStatusChanged, [=](bool state) {
-        qDebug() << "Network Status Changed: " << (state ? "Online" : "Offline");
-
-        if (!state && !networkDetector->isDialogVisible()) {
-            // 在主线程中弹出提示框
-            QMetaObject::invokeMethod(QCoreApplication::instance(), [=]() {
-                    networkDetector->setDialogVisible(true);  // 设置对话框显示状态
-                    QMessageBox::information(nullptr, "提示", "网络已掉线，请检查网络连接。", QMessageBox::Ok);
-
-                    // 用户关闭提示框后执行一些操作，可以在这里添加你的代码
-                    qDebug() << "User closed the message box. Performing additional operations...";
-                    this->on_getAccessToken();
-                    networkDetector->setDialogVisible(false);  // 重置对话框显示状态
-                }, Qt::QueuedConnection);
-        }
-    });
-    networkDetector->start();
-
-    customPlot=ui->widget;//指针方便使用widget
-
-    setupHeatmap(customPlot);
 }
 
 void MainWindow::singleHelp()
@@ -686,61 +682,6 @@ void MainWindow::openTable(){
     Form *tableWindow =new Form;
     tableWindow->show();
 }
-
-void MainWindow::handleCustomSignal(){
-    qDebug()<<"1";
-}
-// 功能已经拆分，测试无问题后可删除
-// void MainWindow::outputPix(){
-//     // 设置默认文件格式
-//     QString defaultFileFormat = "png";
-
-//     // 设置默认文件名
-//     QString defaultFileName = "chart_image";
-
-//     // 合并默认文件名和格式
-//     QString defaultFileFullName = defaultFileName + "." + defaultFileFormat;
-
-//     // 打开保存文件对话框
-//     QString fileName = QFileDialog::getSaveFileName(
-//         nullptr,
-//         "选择一个文件",
-//         defaultFileFullName,
-//         "All Files (*)"
-//         );
-
-//     if(fileName.isEmpty())
-//     {
-//         QMessageBox::warning(this,"警告","请选择一个文件");
-//     }
-//     else{
-//         QPixmap chartImage = ui->chartView->grab();
-//         chartImage.save(fileName);
-//     }
-
-//     defaultFileFormat = "png";
-//     defaultFileName = "heatMap_image";
-
-//     // 合并默认文件名和格式
-//     defaultFileFullName = defaultFileName + "." + defaultFileFormat;
-
-//     // 打开保存文件对话框
-//     fileName = QFileDialog::getSaveFileName(
-//         nullptr,
-//         "选择一个文件",
-//         defaultFileFullName,
-//         "All Files (*)"
-//         );
-
-//     if(fileName.isEmpty())
-//     {
-//         QMessageBox::warning(this,"警告","请选择一个文件");
-//     }
-//     else{
-//         QPixmap pixmap = ui->widget->toPixmap();
-//         pixmap.save(fileName);
-//     }
-// }
 
 void MainWindow::onMouseMove(QMouseEvent* event)
 {
