@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>666</width>
+    <width>834</width>
     <height>558</height>
    </rect>
   </property>
@@ -43,12 +43,37 @@
      <row/>
      <column>
       <property name="text">
-       <string>X轴坐标</string>
+       <string>X</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string>Y轴坐标</string>
+       <string>Y</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>dB</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_1</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_2</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_3</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_4</string>
       </property>
      </column>
      <column>
@@ -58,17 +83,77 @@
      </column>
      <column>
       <property name="text">
-       <string>基准灵敏度/dB</string>
+       <string>Ultra_fusion_5</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string>耦合灵敏度/dB</string>
+       <string>Ultra_fusion_6</string>
       </property>
      </column>
      <column>
       <property name="text">
-       <string>dB值</string>
+       <string>Ultra_fusion_7</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_8</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_9</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_10</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_11</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_12</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_13</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_14</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_15</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_17</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_16</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_18</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Ultra_fusion_20</string>
       </property>
      </column>
     </widget>

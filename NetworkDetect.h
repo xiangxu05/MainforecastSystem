@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QEvent>
 #include <QEventLoop>
+#include <QNetworkProxy>
 
 class NetworkDetect : public QThread
 {

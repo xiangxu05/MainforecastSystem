@@ -15,6 +15,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+//以下是初始化界面的方法
 void MainWindow::setupsystem(){
     this->setWindowTitle("超声检测管道性能预测系统");
     ui->statuLable->setText("系统初始化中");
@@ -48,27 +49,20 @@ void MainWindow::setupsystem(){
     //网络状态检测
     NetworkDetect* networkDetector = new NetworkDetect();
     QObject::connect(networkDetector, &NetworkDetect::sig_netStatusChanged, [=](bool state) {
-        qDebug() << "Network Status Changed: " << (state ? "Online" : "Offline");
-
+        //qDebug() << "Network Status Changed: " << (state ? "Online" : "Offline");
         if (!state && !networkDetector->isDialogVisible()) {
             // 在主线程中弹出提示框
             QMetaObject::invokeMethod(QCoreApplication::instance(), [=]() {
                     networkDetector->setDialogVisible(true);  // 设置对话框显示状态
                     QMessageBox::information(nullptr, "提示", "网络已掉线，请检查网络连接。", QMessageBox::Ok);
-
-                    // 用户关闭提示框后执行一些操作，可以在这里添加你的代码
-                    qDebug() << "User closed the message box. Performing additional operations...";
                     this->on_getAccessToken();
                     networkDetector->setDialogVisible(false);  // 重置对话框显示状态
                 }, Qt::QueuedConnection);
         }
     });
     networkDetector->start();
-
     customPlot=ui->widget;//指针方便使用widget
-
     setupHeatmap(customPlot);
-
     connect(ui->action_S,&QAction::triggered,this,&MainWindow::singleHelp);
     connect(ui->action_M,&QAction::triggered,this,&MainWindow::multiHelp);
     connect(ui->action_H,&QAction::triggered,this,&MainWindow::heatmapHelp);
@@ -77,6 +71,7 @@ void MainWindow::setupsystem(){
     connect(ui->action_slow,&QAction::triggered,this,&MainWindow::editWaitTime_slow);
     connect(ui->action_O,&QAction::triggered,this,&MainWindow::on_BrowseButton_clicked);
     connect(ui->action_N,&QAction::triggered,this,&MainWindow::openTable);
+    connect(ui->action_D,&QAction::triggered,this,&MainWindow::inputTable);
     connect(ui->Output_line,&QAction::triggered,this,&MainWindow::outputLine);
     connect(ui->Output_hetmap,&QAction::triggered,this,&MainWindow::outputHeatMap);
     connect(ui->Output_data,&QAction::triggered,this,&MainWindow::outputData);
@@ -85,20 +80,21 @@ void MainWindow::setupsystem(){
 
 void MainWindow::setupHeatmap(QCustomPlot *customPlot)
 {
-    QVector<QString> Xaxis = {"1", "2", "3", "4", "5", "6", "7",
-                              "9", "10", "11","12","13",
-                              "14", "15", "16", "17", "18", "19",
-                              "20"};//横坐标lable
-    QVector<QString> Yaxis = {"1", "2", "3",
-                              "4", "5"};//纵坐标lable
 
-    QVector<QVector<double>> data = {{0,0,0},{0,1,0},{0,2,0},{0,3,0},{0,4,0},{0,5,0},{0,6,0},{0,7,0},{0,8,0},{0,9,0},{0,10,0},{0,11,0},{0,12,0},{0,13,0},{0,14,0},{0,15,0},{0,16,0},{0,17,0},{0,18,0},
-        {0,19,0},{0,20,0},{1,0,0},{1,1,0},{1,2,0},{1,3,0},{1,4,0},{1,5,0},{1,6,0},{1,7,0},{1,8,0},{1,9,0},{1,10,0},{1,11,0},{1,12,0},{1,13,0},{1,14,0},{1,15,0},
-        {1,16,0},{1,17,0},{1,18,0},{1,19,0},{2,0,0},{2,1,0},{2,2,0},{2,3,0},{2,4,0},{2,5,0},{2,6,0},{2,7,0},{2,8,0},{2,9,0},{2,10,0},{2,11,0},{2,12,0},
-        {2,13,0},{2,14,0},{2,15,0},{2,16,0},{2,17,0},{2,18,0},{2,19,0},{3,0,0},{3,1,0},{3,2,0},{3,3,0},{3,4,0},{3,5,0},{3,6,0},{3,7,0},{3,8,0},
-        {3,9,0},{3,10,0},{3,11,0},{3,12,0},{3,13,0},{3,14,0},{3,15,0},{3,16,0},{3,17,0},{3,18,0},{3,19,0},{4,0,0},{4,1,0},{4,2,0},{4,3,0},{4,4,0},
-        {4,5,0},{4,6,0},{4,7,0},{4,8,0},{4,9,0},{4,10,0},{4,11,0},{4,12,0},{4,13,0},{4,14,0},{4,15,0},{4,16,0},{4,17,0},{4,18,0},{4,19,0}
-    };
+    // 设置横坐标和纵坐标的范围
+    customPlot->xAxis->setRange(0, 5);
+    customPlot->yAxis->setRange(0, 5);
+
+    // 设置横坐标和纵坐标的刻度标签
+    QVector<QString> Xaxis;
+    QVector<QString> Yaxis;
+
+    for (int i = 0; i < 5; ++i) {
+        Xaxis.append(QString::number(i));
+    }
+    for (int i = 0; i < 5; ++i) {
+        Yaxis.append(QString::number(i));
+    }
 
     QCPColorMap *heatmap = new QCPColorMap(customPlot->xAxis, customPlot->yAxis);  // 构造一个颜色图
     heatmap->data()->setSize(Xaxis.size(), Yaxis.size());   // 设置颜色图数据维度，其内部维护着一个一维数组（一般表现为二维数组），这里可以理解为有多少个小方块
@@ -129,9 +125,7 @@ void MainWindow::setupHeatmap(QCustomPlot *customPlot)
     //设置Z值来显示颜色
     for (int x = 0; x < Xaxis.size(); ++x) {
         for (int y = 0; y < Yaxis.size(); ++y) {
-            int z = data.at(Xaxis.size() * y + x).at(2);
-            if (z) heatmap->data()->setCell(x, y, z);     // 如果z不为0，则设置颜色值的位置
-            else heatmap->data()->setAlpha(x, y, 0);  // z为0，设置为透明
+            heatmap->data()->setAlpha(x, y, 0);// 如果z不为0，则设置颜色值的位置
         }
     }
 
@@ -156,6 +150,7 @@ void MainWindow::setupHeatmap(QCustomPlot *customPlot)
     colorScale->setMarginGroup(QCP::msLeft | QCP::msRight, marginGroup);
 }
 
+//以下是几个按钮的方法
 void MainWindow::on_BrowseButton_clicked()
 {
     QString fileName = QFileDialog::getOpenFileName(this, "选择一个文件",
@@ -171,13 +166,230 @@ void MainWindow::on_BrowseButton_clicked()
     }
 }
 
+//这个函数控制了点击推断后的程序的主要逻辑
+void MainWindow::on_SingleButton_clicked()
+{
+    ui->SingleButton->setDisabled(true);
+    QString waveHight = ui->waveHightEdit->text();
+    QString dB = ui->dBEdit->text();
+    QString xStep= ui->xStepEdit->text();
+    QString yStep= ui->yStepEdit->text();
+    QString filePath = ui->FilelineEdit->text();
+    if(waveHight.isEmpty() || dB.isEmpty() || xStep.isEmpty() || yStep.isEmpty() || filePath.isEmpty()){
+        QMessageBox::warning(this,"警告","缺少相关参数或文件路径！");
+        ui->SingleButton->setEnabled(true);
+        return;
+    }
+    ui->textBrowser->clear();//清理历史处理记录
+    ui->BrowseButton->setDisabled(true); //浏览按钮关闭
+
+    series->clear();//清除序列剩余数值
+    for (auto line : drawLines) {
+        //ui->widget->removeItem(line);
+        delete line;
+    }
+    // 移除完成后清空容器
+    drawLines.clear();
+
+    //网络通讯相关对象
+    QString baseUrl = BASEURL;
+    QUrl url(baseUrl);// URL
+    QUrlQuery query;
+    query.addQueryItem("access_token",accessToken);
+    url.setQuery(query);// 设置url参数
+    QNetworkRequest request;
+    request.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("Content-Type:application/json;charset=UTF-8"));
+    request.setUrl(url);// 构造请求
+    get_forcastResult =  new QNetworkAccessManager(this);//与网站通信的对象
+    connect(get_forcastResult, SIGNAL(finished(QNetworkReply*)), this, SLOT(multiforcastResult(QNetworkReply*)));//连接网络回传信号，对响应进行处理
+
+    //打开文件
+    ui->textBrowser->append("待预测文件路径："+filePath);
+    QFile file(filePath);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QMessageBox::warning(this,"警告","该文件无法读取！");
+    }
+    //打开后开始处理
+    else{
+        QJsonArray dataArray;
+        QTextStream in(&file);
+        //判断file是否为空
+        //感觉可以暂时不写
+        //初始化热力图
+        auto *colorMap = static_cast<QCPColorMap *>(ui->widget->plottable(0));
+        // 获取 colorMap 的数据
+        QCPColorMapData *data = colorMap->data();
+        // 遍历数据，并将 Alpha 值设置为 0
+        for (int xIndex = 0; xIndex < data->keySize(); ++xIndex) {
+            for (int yIndex = 0; yIndex < data->valueSize(); ++yIndex) {
+                // 设置当前点的 Alpha 值为 0
+                data->setAlpha(xIndex, yIndex, 0);
+            }
+        }
+        int xMax = 5,yMax =5;
+        QVector<QString> lines;
+        while(!in.atEnd()){
+            QString line = in.readLine();//读一行
+            QStringList values = line.split(',', Qt::SkipEmptyParts);//以逗号分解
+            xMax = std::max(xMax,values[0].toInt());
+            yMax = std::max(yMax,values[1].toInt());
+            lines.append(line);
+        }
+        //qDebug()<<xMax<<yMax;
+
+        // 设置横坐标和纵坐标的范围
+        ui->widget->xAxis->setRange(0, xMax+1);
+        ui->widget->yAxis->setRange(0, yMax+1);
+        // 设置横坐标和纵坐标的刻度标签
+        QVector<QString> Xaxis;
+        QVector<QString> Yaxis;
+        for (int i = 0; i < xMax+1; ++i) {
+            Xaxis.append(QString::number(i));
+        }
+        for (int i = 0; i < yMax+1; ++i) {
+            Yaxis.append(QString::number(i));
+        }
+        colorMap->data()->setSize(Xaxis.size(), Yaxis.size());   // 设置颜色图数据维度，其内部维护着一个一维数组（一般表现为二维数组），这里可以理解为有多少个小方块
+        colorMap->data()->setRange(QCPRange(0.5, Xaxis.size() - 0.5), QCPRange(0.5, Yaxis.size() - 0.5));  // 颜色图在x、y轴上的范围
+        QSharedPointer<QCPAxisTickerText> xTicker(new QCPAxisTickerText);
+        QSharedPointer<QCPAxisTickerText> yTicker(new QCPAxisTickerText);
+        xTicker->setTicks(labelPositions(Xaxis, 0.5), Xaxis);
+        yTicker->setTicks(labelPositions(Yaxis, 0.5), Yaxis);
+        xTicker->setSubTickCount(1);
+        yTicker->setSubTickCount(1);
+        customPlot->xAxis->setTicker(xTicker);
+        customPlot->yAxis->setTicker(yTicker);
+        customPlot->xAxis->grid()->setPen(Qt::NoPen);
+        customPlot->yAxis->grid()->setPen(Qt::NoPen);
+        customPlot->xAxis->grid()->setSubGridVisible(true);
+        customPlot->yAxis->grid()->setSubGridVisible(true);
+        customPlot->xAxis->setSubTicks(true);
+        customPlot->yAxis->setSubTicks(true);
+        customPlot->xAxis->setTickLength(0);
+        customPlot->yAxis->setTickLength(0);
+        customPlot->xAxis->setSubTickLength(6);
+        customPlot->yAxis->setSubTickLength(6);
+        customPlot->xAxis->setRange(0, Xaxis.size());
+        customPlot->yAxis->setRange(0, Yaxis.size());
+
+        //设置Z值来显示颜色
+        for (int x = 0; x < Xaxis.size(); ++x) {
+            for (int y = 0; y < Yaxis.size(); ++y) {
+                colorMap->data()->setAlpha(x, y, 0);
+            }
+        }
+
+        for(QString line : lines)
+        {
+            flag=1;
+            QStringList values = line.split(',', Qt::SkipEmptyParts);//以逗号分解
+            bool ok;
+            double firstValue = values.at(0).toDouble(&ok);
+            if(!ok){
+                ui->textBrowser->append("x,y,dB,ultra_fusion*20,forecast_force");
+                continue;
+            }
+
+            if(values.size() == 23){
+                for(auto value:values){
+                    value.toDouble(&ok);
+                    if(!ok){
+                        QString prompt = "第"+QString::number(num)+"行"+value+"格式错误，请检查!";
+                        QMessageBox::warning(this,"警告",prompt);
+                        ui->textBrowser->clear();
+                        series->clear();
+                        flag=0;
+                        num=1;//num用来记录处理到第几行
+                        file.close();
+                        //series->setName("拉力预测值");
+                        Xposision=-1;
+                        Yposision=-1;
+                        //预测结束
+                        ui->statuLable->setText("预测出错，请重新调整待预测文件数据格式。");
+                        ui->BrowseButton->setEnabled(true);
+                        ui->SingleButton->setEnabled(true);
+                        return;
+                    }
+                }
+                if((values[0].toInt()>=0) && (values[1].toInt()>=0)){
+
+                    Xposision=values[0].toInt();
+                    Yposision=values[1].toInt();
+
+                    statusOutput = values[0]+","+values[1]+","+values[2]+",";
+                    QJsonObject jsonBody;
+                    QJsonObject dataObject;
+                    QJsonArray dataArray;
+                    dataObject["db"] = values[2];
+                    for(int i=1;i<21;i++){
+                        dataObject["ultra_fusion_"+QString::number(i)] = values[i+2];
+                        statusOutput += values[i+2]+",";
+                    }
+                    dataArray.append(dataObject);
+                    jsonBody["data"] = dataArray;
+                    QJsonDocument jsonDocument(jsonBody);
+                    QByteArray postData = jsonDocument.toJson();
+
+                    // 发送请求
+                    get_forcastResult->post(request, postData);
+                    ui->statuLable->setText("预测中，请稍等。");
+
+                    //等待回复
+                    connect(get_forcastResult, SIGNAL(finished(QNetworkReply*)), this, SLOT(loopEvent()));
+                    loop.exec();
+
+                    QEventLoop loop2;
+                    QTimer timer;
+                    timer.setSingleShot(true);
+                    timer.start(waitTime);
+                    QObject::connect(&timer, &QTimer::timeout, [&]() {
+                        loop2.quit();  // 退出事件循环
+                    });
+                    loop2.exec();
+                    num++;
+                }
+                else{
+                    QString prompt = "第"+QString::number(num)+"行坐标出现负值!";
+                    QMessageBox::warning(this,"警告",prompt);
+                    ui->textBrowser->clear();
+                    series->clear();
+                    flag=0;
+                    break;
+                }
+            }
+            else
+            {
+                QString prompt = "第"+QString::number(num)+"行格式错误，请检查!";
+                QMessageBox::warning(this,"警告",prompt);
+                ui->textBrowser->clear();
+                series->clear();
+                flag=0;
+                break;
+            }
+        }
+
+        //预测结束
+        num=1;//num用来记录处理到第几行
+        file.close();
+        Xposision=-1;
+        Yposision=-1;
+        if(flag){
+            ui->statuLable->setText("预测完成，可以输入下一次参数及待预测文件。");
+        }else{
+            ui->statuLable->setText("预测出错，请重新调整待预测文件数据格式。");
+        }
+        ui->BrowseButton->setEnabled(true);
+        ui->SingleButton->setEnabled(true);
+    }
+}
+
 void MainWindow::on_getAccessToken(){
 
     ui->statuLable->setText("正在获取Token");
 
     //密钥放置位置
-    QString apiKey = "ptph1iw537m59p5P7Pzuh1jm";
-    QString secretKey = "COCZFa3Hvn84zsRlKl3ixGtVMLScl5kT";
+    QString apiKey = "93HNPMtby3GJe3nAMK1hq3r4";
+    QString secretKey = "qqwiFAqCQOaz6eNIM4N1eoEfP2AWeUfB";
 
     QNetworkRequest request;
 
@@ -196,7 +408,6 @@ void MainWindow::on_getAccessToken(){
     get_accessToken->post(request, data);
 }
 
-
 void MainWindow::accessTokenResult(QNetworkReply* pReply){
 
     if(pReply->error() == QNetworkReply::NoError){
@@ -214,7 +425,7 @@ void MainWindow::accessTokenResult(QNetworkReply* pReply){
     }
 }
 
-void MainWindow::forcastResult(QNetworkReply* pReply){
+void MainWindow::forcastResult(QNetworkReply* pReply){ //此方法目前无用
 
     if(pReply->error() == QNetworkReply::NoError){
         // ui->textBrowser->setText("开始预测");
@@ -224,17 +435,14 @@ void MainWindow::forcastResult(QNetworkReply* pReply){
         QJsonParseError jsonErr;
         QJsonDocument jsonDoc = QJsonDocument::fromJson(string, &jsonErr);
         if (jsonDoc.isObject()){
-            // qDebug()<<"1";
             QJsonObject jsonObj = jsonDoc.object();
             QJsonArray batchResultArray = jsonObj.value("batch_result").toArray();
             QJsonObject firstElement = batchResultArray.at(0).toObject();
             double col5Value = firstElement.value("col5").toDouble();
-            // qDebug() << "col5 value:" << col5Value;
             focastresult = QString::number(col5Value);
             ui->textBrowser->insertPlainText("预测拉力值： "+focastresult);
             ui->statuLable->setText("预测完成，可以输入下一次预测值，或者输入待预测文件。");
             disconnect(getForcastResult);
-            // qDebug()<< focastresult;
         }
     }
     else{
@@ -249,7 +457,7 @@ void MainWindow::multiforcastResult(QNetworkReply* pReply){
 
         //读取所有返回值
         QByteArray string = pReply->readAll();
-        qDebug()<<string;
+        //qDebug()<<string;
 
         //获取内容
         QJsonParseError jsonErr;
@@ -258,306 +466,45 @@ void MainWindow::multiforcastResult(QNetworkReply* pReply){
         //如果返回的是json格式才继续
         if (jsonDoc.isObject()){
 
-            // qDebug()<<"1";//测试是否跑到这的语句
-
             //获取预测值
             QJsonObject jsonObj = jsonDoc.object();
             QJsonArray batchResultArray = jsonObj.value("batch_result").toArray();
             QJsonObject firstElement = batchResultArray.at(0).toObject();
-            double col5Value = firstElement.value("col5").toDouble();
-            // qDebug() << "col5 value:" << col5Value;
-            focastresult = QString::number(col5Value);
+            double force = firstElement.value("force").toDouble();
+            focastresult = QString::number(force);
 
             //将预测值输出
-            ui->textBrowser->insertPlainText("预测拉力值： "+focastresult);
+            statusOutput += focastresult;
+            ui->textBrowser->append(statusOutput);
             ui->statuLable->setText("预测完成，等待预测下一个值。");
             disconnect(getForcastResult);
-            // qDebug()<< focastresult;
 
             //将预测值添加到表格中
-            // Widget::series->append(num,focastresult.toFloat());
             series->append(num,focastresult.toFloat());
 
             // 获取 QChart 对象
             QChart *chart = ui->chartView->chart();
             // 获取当前的 X 轴对象
             QValueAxis *axisX = qobject_cast<QValueAxis *>(chart->axisX());
-            // 修改 X 轴范围，例如设置范围为 [0, 20]
+            // 修改 X 轴范围
             axisX->setRange(1, num);
             // 获取当前的 Y 轴对象
             QValueAxis *axisY = qobject_cast<QValueAxis *>(chart->axisY());
-            // 修改 X 轴范围，例如设置范围为 [0, 20]
-
-            qreal maxValue = std::numeric_limits<qreal>::lowest();
 
             // 遍历系列中的数据点，找到最大值
+            qreal maxValue = std::numeric_limits<qreal>::lowest();
             foreach (const QPointF &point, series->points()) {
-                maxValue = std::max(maxValue, std::max(point.x(), point.y()));
+                maxValue = std::max(maxValue, point.y());
             }
-
             axisY->setRange(0, maxValue+50);
 
             if( Xposision>=0 && Yposision >= 0 ){
-                dynamicHeatmap(Xposision,Yposision,col5Value);
+                dynamicHeatmap(Xposision,Yposision,force);
             }
             num++;
         }
     }
 }
-
-//这个函数控制了点击推断后的程序的主要逻辑
-void MainWindow::on_SingleButton_clicked()
-{
-    ui->SingleButton->setDisabled(true);
-    QString Fire = ui->waveHightEdit->text();
-    QString Draw = ui->dBEdit->text();
-    QString Height= ui->xStepEdit->text();
-    QString dB= ui->yStepEdit->text();
-    QString filePath = ui->FilelineEdit->text();
-
-    ui->waveHightEdit->clear();
-    ui->dBEdit->clear();
-    ui->xStepEdit->clear();
-    ui->yStepEdit->clear();
-    ui->FilelineEdit->clear();
-
-    if((Fire.isEmpty() && Draw.isEmpty() && Height.isEmpty() && dB.isEmpty() && !filePath.isEmpty()) ||
-        (filePath.isEmpty() && !Fire.isEmpty() && !Draw.isEmpty() && !Height.isEmpty() && !dB.isEmpty())){
-
-        auto *colorMap = static_cast<QCPColorMap *>(ui->widget->plottable(0));
-        for (int x = 0; x < 20; ++x) {
-            for (int y = 0; y < 5; ++y) {
-                colorMap->data()->setAlpha(x, y, 0);  // z为0，设置为透明
-            }
-        }
-
-        // URL
-        QString baseUrl = BASEURL;
-        QUrl url(baseUrl);
-
-        // 设置url参数
-        QUrlQuery query;
-        query.addQueryItem("access_token",accessToken);
-        url.setQuery(query);
-
-        // 构造请求
-        QNetworkRequest request;
-        request.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("Content-Type:application/json;charset=UTF-8"));
-        request.setUrl(url);
-
-        //与网站通信的对象
-        get_forcastResult =  new QNetworkAccessManager(this);
-
-        //单次推断的情况
-        if(filePath.isEmpty()){
-
-            if(flag==1){
-                ui->textBrowser->clear();
-                series->clear();
-            }
-            flag=0;
-
-            bool enFire,enDraw,enHeight,endB;
-            Fire.toDouble(&enFire);
-            Draw.toDouble(&enDraw);
-            Height.toDouble(&enHeight);
-            dB.toDouble(&endB);
-            if(enFire && enDraw && enHeight && endB){
-
-                connect(get_forcastResult, SIGNAL(finished(QNetworkReply*)), this, SLOT(forcastResult(QNetworkReply*)));
-                // 表单数据
-                QJsonObject jsonBody;
-                QJsonObject dataObject;
-                QJsonArray dataArray;
-                dataObject["col1"] = Fire;
-                dataObject["col2"] = Draw;
-                dataObject["col3"] = Height;
-                dataObject["col4"] = dB;
-                dataArray.append(dataObject);
-                jsonBody["data"] = dataArray;
-                QJsonDocument jsonDocument(jsonBody);
-                QByteArray postData = jsonDocument.toJson();
-
-                // 发送请求
-                get_forcastResult->post(request, postData);
-                ui->statuLable->setText("预测中，请稍等。");
-                ui->textBrowser->append("基准灵敏度(dB): "+Fire+";耦合灵敏度(dB): "+Draw+";波幅： "+Height+"%;dB值： "+dB+";");
-
-            }
-            else{
-                QMessageBox::warning(this,"警告","错误的输入值");
-            }
-
-        }
-
-        //多次推断的情况
-        else{
-
-            if(flag==0){
-                ui->textBrowser->clear();
-            }
-            flag=1;
-
-            ui->BrowseButton->setDisabled(true); //关闭浏览文件功能
-            ui->textBrowser->clear(); //去除浏览框的路径内容
-
-            series->clear();//清除序列剩余数值
-
-            //连接网络回传信号，并响应进行处理
-            connect(get_forcastResult, SIGNAL(finished(QNetworkReply*)), this, SLOT(multiforcastResult(QNetworkReply*)));
-
-            //打开文件
-            ui->textBrowser->append("待预测文件路径："+filePath);
-            QFile file(filePath);
-            if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
-                QMessageBox::warning(this,"警告","该文件无法读取！");
-            }
-            //打开后开始处理
-            else{
-
-                QJsonArray dataArray;
-                QTextStream in(&file);
-
-                while (!in.atEnd())
-                {
-
-                    QString line = in.readLine();
-                    QStringList values = line.split(',', Qt::SkipEmptyParts);
-
-                    if (values.size() == 4)
-                    {
-                        bool enValue1,enValue2,enValue3,enValue4;
-                        values[0].toDouble(&enValue1);
-                        values[1].toDouble(&enValue2);
-                        values[2].toDouble(&enValue3);
-                        values[3].toDouble(&enValue4);
-                        if(enValue1 && enValue2 && enValue3 && enValue4){
-
-                            QJsonObject jsonBody;
-                            QJsonObject dataObject;
-                            QJsonArray dataArray;
-                            dataObject["col1"] = values[0];
-                            dataObject["col2"] = values[1];
-                            dataObject["col3"] = values[2];
-                            dataObject["col4"] = values[3];
-                            dataArray.append(dataObject);
-                            jsonBody["data"] = dataArray;
-                            QJsonDocument jsonDocument(jsonBody);
-                            QByteArray postData = jsonDocument.toJson();
-
-                            // 发送请求
-                            get_forcastResult->post(request, postData);
-                            ui->statuLable->setText("预测中，请稍等。");
-                            ui->textBrowser->append("基准灵敏度(dB): "+values[0]+";耦合灵敏度(dB): "+values[1]+";波幅： "+values[2]+"%;dB值： "+values[3]+";");
-
-                            connect(get_forcastResult, SIGNAL(finished(QNetworkReply*)), this, SLOT(loopEvent()));
-
-                            loop.exec();
-
-                            QEventLoop loop1;
-
-                            QTimer timer;
-                            timer.setSingleShot(true);
-                            timer.start(waitTime);
-                            QObject::connect(&timer, &QTimer::timeout, [&]() {
-                                loop1.quit();  // 退出事件循环
-                            });
-                            loop1.exec();
-
-                        }
-                        else{
-                            QString prompt = "第"+QString::number(num)+"行存在内容错误，出现非数值!";
-                            QMessageBox::warning(this,"警告",prompt);
-                            ui->textBrowser->clear();
-                            series->clear();
-                            break;
-                        }
-                    }
-                    else if(values.size() == 6){
-
-                        bool enValue1,enValue2,enValue3,enValue4,enValue5,enValue6;
-                        values[0].toInt(&enValue1);
-                        values[1].toInt(&enValue2);
-                        values[2].toDouble(&enValue3);
-                        values[3].toDouble(&enValue4);
-                        values[4].toDouble(&enValue5);
-                        values[5].toDouble(&enValue6);
-                        if(enValue1 && enValue2 && enValue3 && enValue4 && enValue5 &&enValue6 && (values[0].toInt()>=0) && (values[1].toInt()>=0)){
-
-                            Xposision=values[0].toInt();
-                            Yposision=values[1].toInt();
-                            QJsonObject jsonBody;
-                            QJsonObject dataObject;
-                            QJsonArray dataArray;
-                            dataObject["col1"] = values[2];
-                            dataObject["col2"] = values[3];
-                            dataObject["col3"] = values[4];
-                            dataObject["col4"] = values[5];
-                            dataArray.append(dataObject);
-                            jsonBody["data"] = dataArray;
-                            QJsonDocument jsonDocument(jsonBody);
-                            QByteArray postData = jsonDocument.toJson();
-
-                            // 发送请求
-                            get_forcastResult->post(request, postData);
-                            ui->statuLable->setText("预测中，请稍等。");
-                            // ui->textBrowser->append("("+QString::number(values[0].toInt()+1)+","+QString::number(values[1].toInt()+1)+");基准灵敏度(dB): "
-                            //                         +values[2]+";耦合灵敏度(dB): "+values[3]+";波幅： "+values[4]+"%;dB值： "+values[5]+";");
-                            ui->textBrowser->append("基准灵敏度(dB): "
-                                                    +values[2]+";耦合灵敏度(dB): "+values[3]+";波幅： "+values[4]+"%;dB值： "+values[5]+";");
-
-                            connect(get_forcastResult, SIGNAL(finished(QNetworkReply*)), this, SLOT(loopEvent()));
-
-                            loop.exec();
-
-                            QEventLoop loop2;
-
-                            QTimer timer;
-                            timer.setSingleShot(true);
-                            timer.start(waitTime);
-                            QObject::connect(&timer, &QTimer::timeout, [&]() {
-                                loop2.quit();  // 退出事件循环
-                            });
-                            loop2.exec();
-
-                        }
-                        else{
-                            QString prompt = "第"+QString::number(num)+"行存在内容错误，出现非数值!";
-                            QMessageBox::warning(this,"警告",prompt);
-                            ui->textBrowser->clear();
-                            series->clear();
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        ui->textBrowser->append("第"+QString::number(num)+"行格式错误，请检查!");
-                        num++;
-                    }
-                }
-
-                //num用来记录处理到第几行
-                num=1;
-                file.close();
-                series->setName("拉力预测值");
-
-                Xposision=-1;
-                Yposision=-1;
-
-
-                //预测结束
-                ui->statuLable->setText("预测完成，可以输入下一次预测值，或者输入待预测文件。");
-                ui->BrowseButton->setEnabled(true);
-            }
-        }
-    }
-    else{
-        QMessageBox::warning(this,"警告","请输入一条完整数据在上方，或是单独导入数据文件！");
-    }
-    ui->SingleButton->setEnabled(true);
-}
-
-
 
 QVector<double> MainWindow::labelPositions(const QVector<QString> &labels, double offset)
 {
@@ -577,11 +524,12 @@ void MainWindow::dynamicHeatmap(int x , int y , double z)
         line1->start->setCoords(x+0.25, y+0.25);
         line1->end->setCoords(x+0.75, y+0.75);
         line1->setPen(QPen(Qt::red));
-
+        drawLines.append(line1);
         QCPItemLine *line2 = new QCPItemLine(customPlot);
         line2->start->setCoords(x+0.25, y+0.75);
         line2->end->setCoords(x+0.75, y+0.25);
         line2->setPen(QPen(Qt::red));
+        drawLines.append(line2);
     }
     ui->widget->replot();
 }
@@ -590,99 +538,108 @@ void MainWindow::loopEvent(){
     loop.quit();
 }
 
-void MainWindow::singleHelp()
-{
-    // 创建消息框
-    QMessageBox helpBox;
-
-    // 设置消息框的图标为帮助图标
-    helpBox.setIcon(QMessageBox::Information);
-
-    // 设置消息框的标题
-    helpBox.setWindowTitle("帮助信息");
-
-    // 设置消息框的文本内容
-    helpBox.setText("请分别输入四个参数进行推断。");
-
-    // 添加一个“确定”按钮
-    helpBox.addButton(QMessageBox::Ok);
-
-    // 显示消息框
-    helpBox.exec();
-}
-
-void MainWindow::multiHelp()
-{
-    // 创建消息框
-    QMessageBox helpBox;
-
-    // 设置消息框的图标为帮助图标
-    helpBox.setIcon(QMessageBox::Information);
-
-    // 设置消息框的标题
-    helpBox.setWindowTitle("帮助信息");
-
-    // 设置消息框的文本内容
-    helpBox.setText("多次推断时，生成相应的拉力预测值折线图。");
-
-    // 添加详细信息
-    helpBox.setDetailedText("目前支持输入txt文件或csv文件进行推断，输入格式为：\n"
-                            "基准灵敏度，耦合灵敏度，波幅，dB值。\n"
-                            "一条数据对应一行。");
-
-    // 添加一个“确定”按钮
-    helpBox.addButton(QMessageBox::Ok);
-
-    // 显示消息框
-    helpBox.exec();
-}
-
-void MainWindow::heatmapHelp()
-{
-    // 创建消息框
-    QMessageBox helpBox;
-
-    // 设置消息框的图标为帮助图标
-    helpBox.setIcon(QMessageBox::Information);
-
-    // 设置消息框的标题
-    helpBox.setWindowTitle("帮助信息");
-
-    // 设置消息框的文本内容
-    helpBox.setText("整体推断时，生成相应的拉力预测值折线图与热力图。");
-
-    // 添加详细信息
-    helpBox.setDetailedText("目前支持输入txt文件或csv进行推断，输入格式为：\n"
-                            "X轴坐标，Y轴坐标，基准灵敏度，耦合灵敏度，波幅，dB值。\n"
-                            "一条数据对应一行。");
-
-    // 添加一个“确定”按钮
-    helpBox.addButton(QMessageBox::Ok);
-
-    // 显示消息框
-    helpBox.exec();
-}
-
-void MainWindow::editWaitTime_fast(){
-    waitTime=1000;
-    QMessageBox::information(nullptr, "提示", "已将推断速度更改为快速", QMessageBox::Ok);
-}
-
-void MainWindow::editWaitTime_routine(){
-    waitTime=2000;
-    QMessageBox::information(nullptr, "提示", "已将推断速度更改为常规", QMessageBox::Ok);
-}
-
-void MainWindow::editWaitTime_slow(){
-    waitTime=5000;
-    QMessageBox::information(nullptr, "提示", "已将推断速度更改为缓慢", QMessageBox::Ok);
-}
-
 void MainWindow::openTable(){
     Form *tableWindow =new Form;
     tableWindow->show();
 }
 
+void MainWindow::inputTable(){
+    QString waveHight = ui->waveHightEdit->text();
+    QString dB = ui->dBEdit->text();
+    QString xStep= ui->xStepEdit->text();
+    QString yStep= ui->yStepEdit->text();
+    if(waveHight.isEmpty() || dB.isEmpty() || xStep.isEmpty() || yStep.isEmpty()){
+        QMessageBox::warning(this,"警告","请输入参数！");
+        return;
+    }
+    int xNum = 20/xStep.toInt();
+    Form *tableWindow =new Form;
+    QVector<QVector<QString>> values;
+
+    //获取待处理文件名
+    QString fileName = QFileDialog::getOpenFileName(this, "选择一个文件",
+                                                    QCoreApplication::applicationFilePath(),
+                                                    "*");
+    if(fileName.isEmpty())
+    {
+        QMessageBox::warning(this,"警告","请选择一个文件");
+    }
+    else
+    {
+        QFile file(fileName);
+        if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+            QMessageBox::warning(this,"警告","该文件无法读取！");
+            return;
+        }
+        //打开后开始处理
+        else{
+            //处理数据，存入values;
+            QMessageBox msgBox;
+            msgBox.setWindowTitle("提示");
+            msgBox.setText("开始处理数据！");
+            msgBox.exec();
+            //处理数据
+            QTextStream in(&file);
+            QVector<QVector<QString>> datas;
+            while(!in.atEnd()){
+                QString line = in.readLine();//读一行
+                QStringList values = line.split(',', Qt::SkipEmptyParts);//以逗号分解
+                QVector<QString> rowData;
+                for (const QString &value : values) {
+                    rowData.append(value);
+                }
+                datas.append(rowData);
+            }
+            QVector<QVector<QString>> resDatas;
+            for(auto data : datas){
+                resDatas[data[0].toInt()-1][data[1].toInt()-1]= fineMax(data);
+            }
+            for(int i = 0;i<datas.size();i++){
+                for(int j=0;j<datas[0].size();){
+                    for(int k = 0;k<20;k++){
+                        values[i][3+k]=resDatas[i][j];
+                        j++;
+                        if(j>datas[0].size()) break;
+                    }
+                    values[i][0]=QString::number(j/20);
+                    values[i][1]=QString::number(i);
+                    values[i][2]=dB;
+                }
+            }
+
+
+            //数据处理完成
+            msgBox.setText("数据处理完成！");
+            msgBox.exec();
+        }
+    }
+
+
+    tableWindow->setTableValues(values);
+    tableWindow->show();
+}
+
+QString MainWindow::fineMax(QVector<QString> rowData){
+    QVector<double> numericData;
+    for (int i = 3; i < rowData.size(); ++i) {
+        bool ok;
+        double value = rowData[i].toDouble(&ok);
+        if (ok) {
+            numericData.append(value);
+        }
+    }
+
+    // 找到最大值
+    double max = numericData.isEmpty() ? 0 : numericData.first();
+    for (int i = 1; i < numericData.size(); ++i) {
+        if (numericData[i] > max) {
+            max = numericData[i];
+        }
+    }
+
+    return QString::number(max);
+}
+//获取当前鼠标位置的方法
 void MainWindow::onMouseMove(QMouseEvent* event)
 {
     auto *colorMap = static_cast<QCPColorMap *>(ui->widget->plottable(0));
@@ -695,11 +652,12 @@ void MainWindow::onMouseMove(QMouseEvent* event)
 
     // 在控制台输出或在 GUI 中显示 z 的值
     ui->label_5->setAlignment(Qt::AlignCenter);
-    ui->label_5->setStyleSheet("font-size: 14pt;");
-    ui->label_5->setText("-------------------在（" + QString::number(x) +  ", " +QString::number(y) + ") 处的值为：" + QString::number(z) + "-------------------");
+    ui->label_5->setStyleSheet("font-size: 10pt;");
+    ui->label_5->setText("在（" + QString::number(x) +  ", " +QString::number(y) + ") 处的值为：" + QString::number(z));
     // qDebug() << "Z value at (" << x << ", " << y << ") is " << z;
 }
 
+//输出数据方法
 void MainWindow::outputLine(){
     // 设置默认文件格式
     QString defaultFileFormat = "png";
@@ -756,7 +714,7 @@ void MainWindow::outputHeatMap(){
 }
 void MainWindow::outputData(){
     QString text = ui->textBrowser->toPlainText();
-    text=text.mid(text.indexOf("基"));
+    //text=text.mid(text.indexOf("e")).mid(text.indexOf("\n"));
     QStringList lines = text.split("\n", Qt::SkipEmptyParts);
 
     QList<QStringList> values;
@@ -775,13 +733,10 @@ void MainWindow::outputData(){
 
     // 设置默认文件格式
     QString defaultFileFormat = "csv";
-
     // 设置默认文件名
     QString defaultFileName = "outputData";
-
     // 合并默认文件名和格式
     QString defaultFileFullName = defaultFileName + "." + defaultFileFormat;
-
     // 打开保存文件对话框
     QString fileName = QFileDialog::getSaveFileName(
         nullptr,
@@ -800,19 +755,95 @@ void MainWindow::outputData(){
             QMessageBox::warning(this,"警告","无法保存为该文件，请检查！");
         }
         QTextStream out(&file);
-        out<<"Reference Sensitivity"<<","<<"Coupling Sensitivity"<<","<<"Amplitude"<<","<<"dB Value"<<","<<"Predicted Value"<<"\n";
-        foreach (const QStringList &row, values) {
-            // 将一行数据转换成 CSV 格式，并写入文件
-            QString line;
-            foreach(const QString &num, row){
-                line +=num+",";
-            }
-            line=line.chopped(1);
-            out<<line<<"\n";
-            // out << row.join(",") << "\n";
-        }
+        out<<text;
         file.close();
     }
 
     // qDebug()<<text;
+}
+
+//以下是设置查询速度的方法
+void MainWindow::editWaitTime_fast(){
+    waitTime=1000;
+    QMessageBox::information(nullptr, "提示", "已将推断速度更改为快速", QMessageBox::Ok);
+}
+void MainWindow::editWaitTime_routine(){
+    waitTime=2000;
+    QMessageBox::information(nullptr, "提示", "已将推断速度更改为常规", QMessageBox::Ok);
+}
+void MainWindow::editWaitTime_slow(){
+    waitTime=5000;
+    QMessageBox::information(nullptr, "提示", "已将推断速度更改为缓慢", QMessageBox::Ok);
+}
+
+//以下是帮助信息
+void MainWindow::singleHelp()
+{
+    // 创建消息框
+    QMessageBox helpBox;
+
+    // 设置消息框的图标为帮助图标
+    helpBox.setIcon(QMessageBox::Information);
+
+    // 设置消息框的标题
+    helpBox.setWindowTitle("帮助信息");
+
+    // 设置消息框的文本内容
+    helpBox.setText("请分别输入四个参数进行推断。");
+
+    // 添加一个“确定”按钮
+    helpBox.addButton(QMessageBox::Ok);
+
+    // 显示消息框
+    helpBox.exec();
+}
+void MainWindow::multiHelp()
+{
+    // 创建消息框
+    QMessageBox helpBox;
+
+    // 设置消息框的图标为帮助图标
+    helpBox.setIcon(QMessageBox::Information);
+
+    // 设置消息框的标题
+    helpBox.setWindowTitle("帮助信息");
+
+    // 设置消息框的文本内容
+    helpBox.setText("多次推断时，生成相应的拉力预测值折线图。");
+
+    // 添加详细信息
+    helpBox.setDetailedText("目前支持输入txt文件或csv文件进行推断，输入格式为：\n"
+                            "基准灵敏度，耦合灵敏度，波幅，dB值。\n"
+                            "一条数据对应一行。");
+
+    // 添加一个“确定”按钮
+    helpBox.addButton(QMessageBox::Ok);
+
+    // 显示消息框
+    helpBox.exec();
+}
+void MainWindow::heatmapHelp()
+{
+    // 创建消息框
+    QMessageBox helpBox;
+
+    // 设置消息框的图标为帮助图标
+    helpBox.setIcon(QMessageBox::Information);
+
+    // 设置消息框的标题
+    helpBox.setWindowTitle("帮助信息");
+
+    // 设置消息框的文本内容
+    helpBox.setText("整体推断时，生成相应的拉力预测值折线图与热力图。");
+
+    // 添加详细信息
+    helpBox.setDetailedText("目前支持输入txt文件或csv进行推断，输入格式为：\n"
+                            "X轴坐标，Y轴坐标，基准灵敏度，耦合灵敏度，波幅，dB值。\n"
+                            "一条数据对应一行。");
+
+    // 添加一个“确定”按钮
+    helpBox.addButton(QMessageBox::Ok);
+
+    // 显示消息框
+    helpBox.exec();
 }

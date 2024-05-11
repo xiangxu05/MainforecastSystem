@@ -21,7 +21,7 @@
 #include <QRegularExpressionMatchIterator>
 #include "qcustomplot.h"
 #include "form.h"
-#define BASEURL "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/table_infer/tensilV1"
+#define BASEURL "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/table_infer/MultipleUltra"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -42,20 +42,20 @@ public:
     void setupsystem();
     void setupHeatmap(QCustomPlot *customPlot);
 
-    QVector<double> labelPositions(const QVector<QString> &labels, double offset = 0);//暂时不知道干嘛用的
-
     //对热力图进行输出
     void dynamicHeatmap(int x , int y , double z);
+    QVector<double> labelPositions(const QVector<QString> &labels, double offset = 0);//为热力图重整结果格式
+
+    QString fineMax(QVector<QString> rowData);
 
 private slots:
 
     //浏览按钮
     void on_BrowseButton_clicked();
-
+    //推断按钮
     void on_SingleButton_clicked();
-
+    //获取鉴权Token方法
     void on_getAccessToken();
-
     void accessTokenResult(QNetworkReply* pReply);
 
     void forcastResult(QNetworkReply* pReply);
@@ -64,19 +64,9 @@ private slots:
 
     void loopEvent();
 
-    void singleHelp();
-
-    void multiHelp();
-
-    void heatmapHelp();
-
-    void editWaitTime_slow();
-
-    void editWaitTime_routine();
-
-    void editWaitTime_fast();
-
     void openTable();
+
+    void inputTable();
 
     // void outputPix();
 
@@ -88,6 +78,15 @@ private slots:
 
     void onMouseMove(QMouseEvent* event);
 
+    //设置查询速度
+    void editWaitTime_slow();
+    void editWaitTime_routine();
+    void editWaitTime_fast();
+
+    //一些帮助信息
+    void singleHelp();
+    void multiHelp();
+    void heatmapHelp();
 private:
     //主界面
     Ui::MainWindow *ui;
@@ -102,11 +101,11 @@ private:
     QNetworkAccessManager *get_forcastResult;
     QString focastresult;
 
-    int num=1;
+    int num=1;//num用来记录处理到第几行,也作为折线图数据的序号
+
+    bool flag=0;//用来标志是否预测完成
 
     QLineSeries* series;
-
-    bool flag=0;
 
     void openActionSlot();
 
@@ -115,10 +114,14 @@ private:
     QEventLoop loop;
 
     int Xposision=-1;
-
     int Yposision=-1;
 
     int waitTime=2000;
+
+    //输出文本内容
+    QString statusOutput;
+
+    QVector<QCPItemLine*> drawLines;
 
     //表格对象
     Form *myWidget;

@@ -122,3 +122,22 @@ void Form::on_pushButton_clicked()
     Form::close();
 }
 
+void Form::setTableValues(const QVector<QVector<QString>> &values)
+{
+    // 清空表格
+    ui->tableWidget->clear();
+
+    // 设置表格的行数和列数
+    int rowCount = values.size();
+    int columnCount = values.isEmpty() ? 0 : values[0].size();
+    ui->tableWidget->setRowCount(rowCount);
+    ui->tableWidget->setColumnCount(columnCount);
+
+    // 遍历二维数组，为表格的每个单元格设置值
+    for (int row = 0; row < rowCount; ++row) {
+        for (int column = 0; column < columnCount; ++column) {
+            QTableWidgetItem *item = new QTableWidgetItem(values[row][column]);
+            ui->tableWidget->setItem(row, column, item);
+        }
+    }
+}

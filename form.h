@@ -19,6 +19,7 @@ class Form : public QWidget
 public:
 
     explicit Form(QWidget *parent = nullptr);
+    void setTableValues(const QVector<QVector<QString>> &values);
     ~Form();
 
 signals:
