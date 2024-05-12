@@ -624,7 +624,7 @@ void MainWindow::inputTable(){
                     for(int k = 0 ; k<xNum;k++){
                         for(const auto& row : datas){
                             if(row[0].toInt()==x*xNum+k+1 && row[1].toInt() ==y+1){
-                                resData.append(row[2]);
+                                resData.append(QString::number(qRound(row[2].toDouble()/255*200*100)/100));
                                 outputString += row[2] + ",";
                             }
                         }
