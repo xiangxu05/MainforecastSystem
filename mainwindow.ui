@@ -140,6 +140,9 @@
               <height>25</height>
              </size>
             </property>
+            <property name="text">
+             <string/>
+            </property>
            </widget>
           </item>
           <item>
@@ -236,6 +239,9 @@
               <width>16777215</width>
               <height>25</height>
              </size>
+            </property>
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
@@ -334,6 +340,9 @@
               <height>25</height>
              </size>
             </property>
+            <property name="text">
+             <string/>
+            </property>
            </widget>
           </item>
           <item>
@@ -430,6 +439,9 @@
               <width>16777215</width>
               <height>25</height>
              </size>
+            </property>
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
@@ -604,7 +616,7 @@
      <x>0</x>
      <y>0</y>
      <width>1128</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_F">

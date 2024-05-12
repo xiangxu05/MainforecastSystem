@@ -17,7 +17,7 @@ MainWindow::~MainWindow()
 
 //以下是初始化界面的方法
 void MainWindow::setupsystem(){
-    this->setWindowTitle("超声检测管道性能预测系统");
+    this->setWindowTitle("超声检测管道性能预测系统 V2.0");
     ui->statuLable->setText("系统初始化中");
     this->on_getAccessToken();
     ui->textBrowser->setTextInteractionFlags(Qt::NoTextInteraction);
@@ -548,13 +548,13 @@ void MainWindow::inputTable(){
     QString dB = ui->dBEdit->text();
     QString xStep= ui->xStepEdit->text();
     QString yStep= ui->yStepEdit->text();
+    int xNum = 20/xStep.toInt();
+    QVector<QVector<QString>> resDatas;
+    Form *tableWindow =new Form;
     if(waveHight.isEmpty() || dB.isEmpty() || xStep.isEmpty() || yStep.isEmpty()){
         QMessageBox::warning(this,"警告","请输入参数！");
         return;
     }
-    int xNum = 20/xStep.toInt();
-    Form *tableWindow =new Form;
-    QVector<QVector<QString>> values;
 
     //获取待处理文件名
     QString fileName = QFileDialog::getOpenFileName(this, "选择一个文件",
@@ -578,44 +578,67 @@ void MainWindow::inputTable(){
             msgBox.setWindowTitle("提示");
             msgBox.setText("开始处理数据！");
             msgBox.exec();
-            //处理数据
+            // //处理数据
             QTextStream in(&file);
             QVector<QVector<QString>> datas;
+            ui->statuLable->setText("读入数据中。");
             while(!in.atEnd()){
                 QString line = in.readLine();//读一行
                 QStringList values = line.split(',', Qt::SkipEmptyParts);//以逗号分解
-                QVector<QString> rowData;
-                for (const QString &value : values) {
-                    rowData.append(value);
+                bool ok;
+                values.at(0).toDouble(&ok);
+                if(!ok){
+                    continue;
                 }
+                QVector<QString> rowData;
+                rowData.append(values[0]);
+                rowData.append(values[1]);
+                rowData.append(fineMax(values));
                 datas.append(rowData);
             }
-            QVector<QVector<QString>> resDatas;
-            for(auto data : datas){
-                resDatas[data[0].toInt()-1][data[1].toInt()-1]= fineMax(data);
-            }
-            for(int i = 0;i<datas.size();i++){
-                for(int j=0;j<datas[0].size();){
-                    for(int k = 0;k<20;k++){
-                        values[i][3+k]=resDatas[i][j];
-                        j++;
-                        if(j>datas[0].size()) break;
+            ui->statuLable->setText("读入数据完成。");
+            QString maxFirstColumnValue = datas[0][0]; // 初始化第一列最大值为第一行第一列的值
+            QString maxSecondColumnValue = datas[0][1]; // 初始化第二列最大值为第一行第二列的值
+
+            for (const auto& row : datas) {
+                if (row.size() > 2) {
+                    if (row[0].toInt() > maxFirstColumnValue.toInt()) {
+                        maxFirstColumnValue = row[0];
                     }
-                    values[i][0]=QString::number(j/20);
-                    values[i][1]=QString::number(i);
-                    values[i][2]=dB;
+                    if (row[1].toInt() > maxSecondColumnValue.toInt()) {
+                        maxSecondColumnValue = row[1];
+                    }
                 }
             }
+            ui->statuLable->setText("共存在"+maxSecondColumnValue+"行"+maxFirstColumnValue+"列数据");
+            // qDebug()<<maxFirstColumnValue<<maxSecondColumnValue;
 
-
-            //数据处理完成
-            msgBox.setText("数据处理完成！");
-            msgBox.exec();
+            for(int y = 0 ; y<maxSecondColumnValue.toInt()-1 ; y++){
+                for(int x =0 ; x<(maxFirstColumnValue.toInt()-1)/20 ; x++){
+                    QVector<QString> resData;
+                    QString outputString;
+                    resData.append(QString::number(x));
+                    resData.append(QString::number(y));
+                    resData.append(dB);
+                    outputString += QString::number(x)+","+QString::number(y)+","+dB+",";
+                    for(int k = 0 ; k<xNum;k++){
+                        for(const auto& row : datas){
+                            if(row[0].toInt()==x*xNum+k+1 && row[1].toInt() ==y+1){
+                                resData.append(row[2]);
+                                outputString += row[2] + ",";
+                            }
+                        }
+                    }
+                    //qDebug()<<resData;
+                    outputString.chop(1);
+                    ui->statuLable->setText("写入数据:"+outputString);
+                    resDatas.append(resData);
+                }
+            }
         }
     }
-
-
-    tableWindow->setTableValues(values);
+    ui->statuLable->setText("导入数据成功，请查看是否需要修改！");
+    tableWindow->setTableValues(resDatas);
     tableWindow->show();
 }
 
