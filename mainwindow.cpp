@@ -347,6 +347,10 @@ void MainWindow::on_SingleButton_clicked()
                     });
                     loop2.exec();
                     num++;
+
+                    if(ui->statuLable->text().contains("error_code")){
+                        break;
+                    }
                 }
                 else{
                     QString prompt = "第"+QString::number(num)+"行坐标出现负值!";
@@ -373,7 +377,7 @@ void MainWindow::on_SingleButton_clicked()
         file.close();
         Xposision=-1;
         Yposision=-1;
-        if(flag){
+        if(flag && !ui->statuLable->text().contains("error_code")){
             ui->statuLable->setText("预测完成，可以输入下一次参数及待预测文件。");
         }else{
             ui->statuLable->setText("预测出错，请重新调整待预测文件数据格式。");
@@ -430,7 +434,7 @@ void MainWindow::forcastResult(QNetworkReply* pReply){ //此方法目前无用
     if(pReply->error() == QNetworkReply::NoError){
         // ui->textBrowser->setText("开始预测");
         QByteArray string = pReply->readAll();
-        qDebug()<<string;
+        // qDebug()<<string;
         //获取内容
         QJsonParseError jsonErr;
         QJsonDocument jsonDoc = QJsonDocument::fromJson(string, &jsonErr);
@@ -457,7 +461,7 @@ void MainWindow::multiforcastResult(QNetworkReply* pReply){
 
         //读取所有返回值
         QByteArray string = pReply->readAll();
-        //qDebug()<<string;
+        // qDebug()<<string;
 
         //获取内容
         QJsonParseError jsonErr;
@@ -468,6 +472,12 @@ void MainWindow::multiforcastResult(QNetworkReply* pReply){
 
             //获取预测值
             QJsonObject jsonObj = jsonDoc.object();
+
+            if (jsonObj.contains("error_code") && jsonObj["error_code"].isDouble()){
+                ui->statuLable->setText("远程服务器出错，error_code:"+QString::number(jsonObj["error_code"].toDouble()));
+                return;
+            }
+
             QJsonArray batchResultArray = jsonObj.value("batch_result").toArray();
             QJsonObject firstElement = batchResultArray.at(0).toObject();
             double force = firstElement.value("force").toDouble();
