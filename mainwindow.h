@@ -21,6 +21,7 @@
 #include <QRegularExpressionMatchIterator>
 #include "qcustomplot.h"
 #include "form.h"
+#include "CalculationThread.h"
 #define BASEURL "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/table_infer/MultipleUltra"
 
 QT_BEGIN_NAMESPACE
@@ -44,46 +45,49 @@ public:
 
     //对热力图进行输出
     void dynamicHeatmap(int x , int y , double z);
-    QVector<double> labelPositions(const QVector<QString> &labels, double offset = 0);//为热力图重整结果格式
+    QVector<double> labelPositions(const QVector<QString> &labels, int interval, double offset);
+    // QVector<double> labelPositions(const QVector<QString> &labels, double offset = 0);//为热力图重整结果格式
 
     QString fineMax(QVector<QString> rowData);
 
 private slots:
 
-    //浏览按钮
-    void on_BrowseButton_clicked();
-    //推断按钮
-    void on_SingleButton_clicked();
-    //获取鉴权Token方法
-    void on_getAccessToken();
-    void accessTokenResult(QNetworkReply* pReply);
+    /*
+     *
+     * 这部分是按钮的相关函数
+     *
+    */
+    void on_BrowseButton_clicked();//浏览按钮
+    void on_SingleButton_clicked();//推断按钮
 
-    void forcastResult(QNetworkReply* pReply);
-
-    void multiforcastResult(QNetworkReply* pReply);
-
-    void loopEvent();
-
+    /*
+     *
+     * 这部分是Table的相关函数
+     *
+    */
     void openTable();
-
     void inputTable();
 
-    // void outputPix();
-
+    /*
+     *
+     * 这部分是输出数据的相关函数
+     *
+    */
     void outputHeatMap();
-
-    void outputLine();
-
     void outputData();
 
+    /*
+     *
+     * 显示鼠标所处位置的值
+     *
+    */
     void onMouseMove(QMouseEvent* event);
 
-    //设置查询速度
-    void editWaitTime_slow();
-    void editWaitTime_routine();
-    void editWaitTime_fast();
-
-    //一些帮助信息
+    /*
+     *
+     * 帮助信息
+     *
+    */
     void singleHelp();
     void multiHelp();
     void heatmapHelp();
@@ -91,21 +95,9 @@ private:
     //主界面
     Ui::MainWindow *ui;
 
-    //AccessToken相关对象
-    QMetaObject::Connection getAccessToken;
-    QNetworkAccessManager *get_accessToken;
-    QString accessToken;
-
-    //预测结果相关对象
-    QMetaObject::Connection getForcastResult;
-    QNetworkAccessManager *get_forcastResult;
-    QString focastresult;
-
-    int num=1;//num用来记录处理到第几行,也作为折线图数据的序号
+    QVector<QVector<double>> results;
 
     bool flag=0;//用来标志是否预测完成
-
-    QLineSeries* series;
 
     void openActionSlot();
 
@@ -113,18 +105,16 @@ private:
 
     QEventLoop loop;
 
-    int Xposision=-1;
-    int Yposision=-1;
-
     int waitTime=2000;
 
     //输出文本内容
     QString statusOutput;
 
-    QVector<QCPItemLine*> drawLines;
+    QVector<QCPItemLine*> drawLines;//热力图中的线
 
     //表格对象
     Form *myWidget;
-
+signals:
+    void heatmapUpdateFinished();
 };
 #endif // MAINWINDOW_H
