@@ -29,12 +29,8 @@ private:
     int m_yStep;
     double m_threshold;
     double m_standard;
-    QEventLoop loop;
-    QWaitCondition waitCondition;
-    QMutex mutex;
 
 public slots:
-    void onHeatmapUpdateFinished();
 
 };
 

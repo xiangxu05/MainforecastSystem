@@ -251,7 +251,6 @@ void MainWindow::on_SingleButton_clicked()
         calcThread->setParameters(lines, xStep.toInt(), yStep.toInt(),threshold.toDouble(),standardTensile.toDouble());
 
         connect(calcThread, &CalculationThread::updateHeatmap, this, &MainWindow::dynamicHeatmap);
-        connect(this, &MainWindow::heatmapUpdateFinished,calcThread, &CalculationThread::onHeatmapUpdateFinished);
         connect(calcThread, &CalculationThread::calculationFinished, this, [=]() {
             ui->statuLable->setText("预测完成，可以输入下一次参数及待预测文件。");
             ui->BrowseButton->setEnabled(true);
@@ -261,35 +260,6 @@ void MainWindow::on_SingleButton_clicked()
 
         calcThread->start();
 
-
-        // for(int x=0;x<xMax-(20/xStep.toInt());x+=2){
-        //     for(int y=0;y<yMax-(100/yStep.toInt());y+=2){
-        //         double final = 0;
-        //         double total = 0;
-        //         for(int i=0;i<(20/xStep.toInt());i++){
-        //             for(int j=0;j<(100/yStep.toInt());j++){
-        //                 total += lines[x+i][y+j].toDouble();
-        //             }
-        //         }
-        //         final = total / ((20/xStep.toInt())*(100/yStep.toInt()));
-        //         for(int i=0;i<(20/xStep.toInt());i++){
-        //             for(int j=0;j<(100/yStep.toInt());j++){
-        //                 if (results[x + i][y + j] > final) {
-        //                     results[x + i][y + j] = final;
-        //                     dynamicHeatmap(x + i,y + j,results[x + i][y + j]);
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
-        // //预测结束
-        // num=1;//num用来记录处理到第几行
-        // file.close();
-
-        // ui->statuLable->setText("预测完成，可以输入下一次参数及待预测文件。");
-        // ui->BrowseButton->setEnabled(true);
-        // ui->SingleButton->setEnabled(true);
     }
 }
 
@@ -301,13 +271,6 @@ QVector<double> MainWindow::labelPositions(const QVector<QString> &labels, int i
     }
     return positions;
 }
-// QVector<double> MainWindow::labelPositions(const QVector<QString> &labels, double offset)
-// {
-//     QVector<double> result(labels.size());
-//     for (int i = 0; i < labels.size(); ++i)
-//         result[i] = i + offset;
-//     return result;
-// }
 
 void MainWindow::dynamicHeatmap(int x , int y , double z)
 {
@@ -327,31 +290,26 @@ void MainWindow::dynamicHeatmap(int x , int y , double z)
             // 更新热力图
             colorMap->data()->setCell(x, y, z);
             colorMap->data()->setAlpha(x, y, 255);
-            ui->widget->replot();
+            // ui->widget->replot();
             ui->statuLable->setText("更新：第" + QString::number(y) + "行，第" + QString::number(x) + "列数值为" + QString::number(z) + "N");
-            // emit heatmapUpdateFinished();
         }
     } else {
         qDebug() << "索引超出范围: x=" << x << ", y=" << y << " keySize=" << keySize << " valueSize=" << valueSize;
     }
 
-    // auto *colorMap = static_cast<QCPColorMap *>(ui->widget->plottable(0));
-    // colorMap->data()->setCell(x, y, z);
-    // colorMap->data()->setAlpha(x,y,255);
-
-    // if(z<100){
-    //     QCPItemLine *line1 = new QCPItemLine(customPlot);
-    //     line1->start->setCoords(x+0.25, y+0.25);
-    //     line1->end->setCoords(x+0.75, y+0.75);
-    //     line1->setPen(QPen(Qt::red));
-    //     drawLines.append(line1);
-    //     QCPItemLine *line2 = new QCPItemLine(customPlot);
-    //     line2->start->setCoords(x+0.25, y+0.75);
-    //     line2->end->setCoords(x+0.75, y+0.25);
-    //     line2->setPen(QPen(Qt::red));
-    //     drawLines.append(line2);
-    // }
-    // ui->widget->replot();
+    if(z<200){
+        QCPItemLine *line1 = new QCPItemLine(customPlot);
+        line1->start->setCoords(x+0.25, y+0.25);
+        line1->end->setCoords(x+0.75, y+0.75);
+        line1->setPen(QPen(Qt::red));
+        drawLines.append(line1);
+        QCPItemLine *line2 = new QCPItemLine(customPlot);
+        line2->start->setCoords(x+0.25, y+0.75);
+        line2->end->setCoords(x+0.75, y+0.25);
+        line2->setPen(QPen(Qt::red));
+        drawLines.append(line2);
+    }
+    ui->widget->replot();
 }
 
 void MainWindow::openTable(){
