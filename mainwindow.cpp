@@ -17,23 +17,22 @@ MainWindow::~MainWindow()
 
 //以下是初始化界面的方法
 void MainWindow::setupsystem(){
-    this->setWindowTitle("超声检测管道性能预测系统 V3.0");
+    this->setWindowTitle("超声检测管道性能预测系统 V3.2");
     ui->statuLable->setText("系统初始化中");
 
     //热力图指针定义
     customPlot=ui->widget;//指针方便使用widget
     setupHeatmap(customPlot);
 
-    connect(ui->action_S,&QAction::triggered,this,&MainWindow::singleHelp);
-    connect(ui->action_M,&QAction::triggered,this,&MainWindow::multiHelp);
     connect(ui->action_H,&QAction::triggered,this,&MainWindow::heatmapHelp);
-    connect(ui->action_O,&QAction::triggered,this,&MainWindow::on_BrowseButton_clicked);
-    connect(ui->action_N,&QAction::triggered,this,&MainWindow::openTable);
+    connect(ui->action_O,&QAction::triggered,this,&MainWindow::openTable);
+    connect(ui->action_N,&QAction::triggered,this,&MainWindow::newTable);
     connect(ui->action_D,&QAction::triggered,this,&MainWindow::inputTable);
     connect(ui->Output_hetmap,&QAction::triggered,this,&MainWindow::outputHeatMap);
     connect(ui->Output_data,&QAction::triggered,this,&MainWindow::outputData);
     connect(ui->widget, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     ui->statuLable->setText("初始化完成，可以开始理论值计算。");
+
 }
 
 void MainWindow::setupHeatmap(QCustomPlot *customPlot)
@@ -309,12 +308,54 @@ void MainWindow::dynamicHeatmap(int x , int y , double z)
         line2->setPen(QPen(Qt::red));
         drawLines.append(line2);
     }
-    ui->widget->replot();
+    if(y==0 || y == valueSize)
+        ui->widget->replot();
+}
+
+void MainWindow::newTable(){
+    Form *tableWindow =new Form;
+    tableWindow->show();
+    connect(tableWindow, &Form::filePathChanged, this, &MainWindow::handleParameterChange);
 }
 
 void MainWindow::openTable(){
+    QVector<QVector<QString>> resDatas;
+
     Form *tableWindow =new Form;
+
+    //获取待处理文件名
+    QString fileName = QFileDialog::getOpenFileName(this, "选择一个文件",
+                                                    QCoreApplication::applicationFilePath(),
+                                                    "*");
+    if(fileName.isEmpty())
+    {
+        QMessageBox::warning(this,"警告","请选择一个文件");
+        return;
+    }
+    else
+    {
+        QFile file(fileName);
+        if(!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+            QMessageBox::warning(this,"警告","该文件无法读取！");
+            return;
+        }
+        //打开后开始处理
+        else{
+            QTextStream in(&file);
+            ui->statuLable->setText("读入数据中。");
+            while(!in.atEnd()){
+                QString line = in.readLine();//读一行
+                QStringList values = line.split(',', Qt::SkipEmptyParts);//以逗号分解
+                resDatas.append(values);
+            }
+
+            ui->statuLable->setText("读入数据完成。");
+        }
+    }
+    ui->statuLable->setText("打开文件成功！");
+    tableWindow->setTableValues(resDatas);
     tableWindow->show();
+    connect(tableWindow, &Form::filePathChanged, this, &MainWindow::handleParameterChange);
 }
 
 void MainWindow::inputTable(){
@@ -400,6 +441,7 @@ void MainWindow::inputTable(){
     ui->statuLable->setText("导入数据成功，请查看是否需要修改！");
     tableWindow->setTableValues(resDatas);
     tableWindow->show();
+    connect(tableWindow, &Form::filePathChanged, this, &MainWindow::handleParameterChange);
 }
 
 QString MainWindow::fineMax(QVector<QString> rowData){
@@ -522,51 +564,6 @@ void MainWindow::outputData(){
 }
 
 //以下是帮助信息
-void MainWindow::singleHelp()
-{
-    // 创建消息框
-    QMessageBox helpBox;
-
-    // 设置消息框的图标为帮助图标
-    helpBox.setIcon(QMessageBox::Information);
-
-    // 设置消息框的标题
-    helpBox.setWindowTitle("帮助信息");
-
-    // 设置消息框的文本内容
-    helpBox.setText("请分别输入四个参数进行推断。");
-
-    // 添加一个“确定”按钮
-    helpBox.addButton(QMessageBox::Ok);
-
-    // 显示消息框
-    helpBox.exec();
-}
-void MainWindow::multiHelp()
-{
-    // 创建消息框
-    QMessageBox helpBox;
-
-    // 设置消息框的图标为帮助图标
-    helpBox.setIcon(QMessageBox::Information);
-
-    // 设置消息框的标题
-    helpBox.setWindowTitle("帮助信息");
-
-    // 设置消息框的文本内容
-    helpBox.setText("多次推断时，生成相应的拉力预测值折线图。");
-
-    // 添加详细信息
-    helpBox.setDetailedText("目前支持输入txt文件或csv文件进行推断，输入格式为：\n"
-                            "基准灵敏度，耦合灵敏度，波幅，dB值。\n"
-                            "一条数据对应一行。");
-
-    // 添加一个“确定”按钮
-    helpBox.addButton(QMessageBox::Ok);
-
-    // 显示消息框
-    helpBox.exec();
-}
 void MainWindow::heatmapHelp()
 {
     // 创建消息框
@@ -579,16 +576,21 @@ void MainWindow::heatmapHelp()
     helpBox.setWindowTitle("帮助信息");
 
     // 设置消息框的文本内容
-    helpBox.setText("整体推断时，生成相应的拉力预测值折线图与热力图。");
+    helpBox.setText("整体推断时，生成相应的拉力预测值与热力图。");
 
     // 添加详细信息
-    helpBox.setDetailedText("目前支持输入txt文件或csv进行推断，输入格式为：\n"
-                            "X轴坐标，Y轴坐标，基准灵敏度，耦合灵敏度，波幅，dB值。\n"
-                            "一条数据对应一行。");
+    helpBox.setDetailedText("目前支持输入csv进行推断，输入格式为：\n"
+                            "每行每列中输入对应位置超声值，超声值位置对应坐标，数据之间用逗号“，”隔开。\n"
+                            "原始数据可以通过导入来进行处理。");
 
     // 添加一个“确定”按钮
     helpBox.addButton(QMessageBox::Ok);
 
     // 显示消息框
     helpBox.exec();
+}
+
+void MainWindow::handleParameterChange(const QString &parameter)
+{
+    ui->FilelineEdit->setText(parameter);
 }

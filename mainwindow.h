@@ -65,6 +65,7 @@ private slots:
      * 这部分是Table的相关函数
      *
     */
+    void newTable();
     void openTable();
     void inputTable();
 
@@ -88,9 +89,14 @@ private slots:
      * 帮助信息
      *
     */
-    void singleHelp();
-    void multiHelp();
     void heatmapHelp();
+
+    /*
+     *
+     * 处理表格界面传回的信息
+     *
+    */
+    void handleParameterChange(const QString &parameter);
 private:
     //主界面
     Ui::MainWindow *ui;

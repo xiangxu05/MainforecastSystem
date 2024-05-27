@@ -345,7 +345,7 @@
               </size>
              </property>
              <property name="text">
-              <string>45</string>
+              <string>40</string>
              </property>
             </widget>
            </item>
@@ -715,7 +715,6 @@
       <string>导出(&amp;P)</string>
      </property>
      <addaction name="Output_data"/>
-     <addaction name="Output_line"/>
      <addaction name="Output_hetmap"/>
     </widget>
     <addaction name="action_N"/>
@@ -727,8 +726,6 @@
     <property name="title">
      <string>帮助(&amp;H)</string>
     </property>
-    <addaction name="action_S"/>
-    <addaction name="action_M"/>
     <addaction name="action_H"/>
    </widget>
    <widget class="QMenu" name="menu_S">

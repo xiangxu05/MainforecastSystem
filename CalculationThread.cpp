@@ -59,9 +59,10 @@ void CalculationThread::run()
     for (int x = 0; x < xMax; x++) {
         for (int y = 0; y < yMax; y++) {
             // qDebug()<<x<<" "<<y<<" "<<results[y][x];
-            QThread::msleep(1);
+            // QThread::msleep(1);
             emit updateHeatmap(x, y, results[y][x]);
         }
+        QThread::msleep(1);
     }
     emit calculationFinished();
 }
